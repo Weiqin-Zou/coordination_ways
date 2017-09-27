@@ -62,12 +62,30 @@ function download_readme(){
        brNo=$((2*i))
        fn=$(sed -n "${fnNo}p" $fnBr | awk -F "\"" '{print $4}')
        br=$(sed -n "${brNo}p" $fnBr | awk -F "\"" '{print $4}')
-       https://raw.githubusercontent.com/case451/hw3_rottenpotatoes/master/README
-       url="https://raw.githubusercontent.com/$fn/$br/README"
-       echo $fn, $br, $url
-       curl $url -o sd
+       #https://raw.githubusercontent.com/case451/hw3_rottenpotatoes/master/README
+       user=$(echo $fn | cut -f1 -d "/")
+       repo=$(echo $fn | cut -f2 -d "/")
+       crawl $fn $br "README"
+       crawl $fn $br "CONTRIBUTING"
        exit
    done
+}
+
+function crawl(){
+    fn=$1
+    br=$2
+    fileType=$3 #canbe: README, CONTRIBUTING
+    url="https://raw.githubusercontent.com/$fn/$br/$fileType"
+    echo $fn, $br, $url
+    curl $url -o readme_dir/${user}_${repo}_${fileType}
+
+    url="https://raw.githubusercontent.com/$fn/$br/$fileType.md"
+    echo $fn, $br, $url
+    curl $url -o readme_dir/${user}_${repo}_${fileType}.md
+    
+    url="https://raw.githubusercontent.com/$fn/$br/$fileType.txt"
+    echo $fn, $br, $url
+    curl $url -o readme_dir/${user}_${repo}_${fileType}.txt
 }
 
 #get_topN_forkedRepo $topNumber
