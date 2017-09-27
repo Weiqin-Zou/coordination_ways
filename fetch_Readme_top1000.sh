@@ -4,11 +4,15 @@ topNumber=$1 #how many top repo do you want to retrieve their readme files.
 clientAccount=$2
 clientCnt=$(cat $clientAccount | wc -l)
 prefix="https://api.github.com/search/repositories?"
-query="q=created:>1999-01-01&sort=forks&order=desc"
+query="q=created:>1970-01-01+forks:>1000&sort=forks&order=desc"
 pageLimit=100
+
+mkdir -p readme_dir
 
 #example get_topN_forkedRepo $topNumber
 function get_topN_forkedRepo(){
+
+    rm topN_fnBranch
     topN=$1
     gotFn=0
     cnt=1
@@ -19,7 +23,7 @@ function get_topN_forkedRepo(){
     curl -m 120 $url -o tmpFilter
 
     grep -E "\"full_name\":" tmpFilter >tmp_fn
-    grep -E "\"full_name\":|\"default_branch\":" tmpFilter >tmp_fn_branch
+    grep -E "\"full_name\":|\"language\":|\"forks_count\":|\"default_branch\":" tmpFilter >tmp_fn_branch
     fnCnt=$(cat tmp_fn | wc -l)
     gotFn=$((gotFn+fnCnt))
 
@@ -30,7 +34,6 @@ function get_topN_forkedRepo(){
     if [ $gotFn -eq $topN ];then
         return
     fi
-    
     while [ $gotFn -lt $topN ]
     do
         cat tmp_fn_branch >> topN_fnBranch
@@ -55,19 +58,25 @@ function get_topN_forkedRepo(){
 function download_readme(){
    fnBr=$1
    num=$(cat $fnBr | wc -l)
-   num=$((num/2))
-   for i in `seq 1 $num`
+   num=$((num/4))
+   for i in `seq 1 $num` #file format:fn\nforks\ndefault_br
    do
-       fnNo=$((2*i-1))
-       brNo=$((2*i))
+       fnNo=$((4*(i-1)+1))
+       langNo=$((4*(i-1)+2))
+       brNo=$((4*i))
        fn=$(sed -n "${fnNo}p" $fnBr | awk -F "\"" '{print $4}')
+       lang=$(sed -n "${langNo}p" $fnBr | awk '{print $NF}' | cut -f1 -d ",")
        br=$(sed -n "${brNo}p" $fnBr | awk -F "\"" '{print $4}')
+       if [ "$lang" = "null" ];then
+           echo $fn, $br, $lang >>nulllanguage_fn
+           continue
+       fi
        #https://raw.githubusercontent.com/case451/hw3_rottenpotatoes/master/README
        user=$(echo $fn | cut -f1 -d "/")
        repo=$(echo $fn | cut -f2 -d "/")
        crawl $fn $br "README"
        crawl $fn $br "CONTRIBUTING"
-       exit
+       crawl $fn $br "CHANGELOG"
    done
 }
 
@@ -75,18 +84,9 @@ function crawl(){
     fn=$1
     br=$2
     fileType=$3 #canbe: README, CONTRIBUTING
-    url="https://raw.githubusercontent.com/$fn/$br/$fileType"
-    echo $fn, $br, $url
-    curl $url -o readme_dir/${user}_${repo}_${fileType}
-
-    url="https://raw.githubusercontent.com/$fn/$br/$fileType.md"
-    echo $fn, $br, $url
-    curl $url -o readme_dir/${user}_${repo}_${fileType}.md
-    
-    url="https://raw.githubusercontent.com/$fn/$br/$fileType.txt"
-    echo $fn, $br, $url
-    curl $url -o readme_dir/${user}_${repo}_${fileType}.txt
+    url="https://raw.githubusercontent.com/$fn/$br/${fileType}{.md,.txt,}"
+    curl --fail $url -o readme_dir/${user}_${repo}_${fileType}
 }
 
-#get_topN_forkedRepo $topNumber
+get_topN_forkedRepo $topNumber
 download_readme topN_fnBranch
