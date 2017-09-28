@@ -26,6 +26,7 @@ function get_topN_forkedRepo(){
     grep -E "\"full_name\":|\"language\":|\"forks_count\":|\"default_branch\":" tmpFilter >tmp_fn_branch
     fnCnt=$(cat tmp_fn | wc -l)
     gotFn=$((gotFn+fnCnt))
+    cat tmp_fn_branch >> topN_fnBranch
 
     if [ $fnCnt -eq 0 ];then
        return 
@@ -36,7 +37,6 @@ function get_topN_forkedRepo(){
     fi
     while [ $gotFn -lt $topN ]
     do
-        cat tmp_fn_branch >> topN_fnBranch
         pageCnt=$((pageCnt+1))
         cnt=$((cnt+1))
         clientNum=$((cnt%clientCnt + 1))
@@ -47,9 +47,10 @@ function get_topN_forkedRepo(){
         curl -m 120 $url -o tmpFilter
 
         grep -E "\"full_name\":" tmpFilter >tmp_fn
-        grep -E "\"full_name\":|\"default_branch\":" tmpFilter >tmp_fn_branch
+        grep -E "\"full_name\":|\"language\":|\"forks_count\":|\"default_branch\":" tmpFilter >tmp_fn_branch
         fnCnt=$(cat tmp_fn | wc -l)
         gotFn=$((gotFn+fnCnt))
+        cat tmp_fn_branch >> topN_fnBranch
     done
     rm tmp_fn tmpFilter tmp_fn_branch
 }
